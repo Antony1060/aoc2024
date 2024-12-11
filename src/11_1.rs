@@ -32,8 +32,8 @@ fn main() {
 
             if len % 2 == 0 {
                 let pow = 10u64.pow(len / 2);
-                new.push(stone % pow);
                 new.push(stone / pow);
+                new.push(stone % pow);
                 continue;
             }
 
