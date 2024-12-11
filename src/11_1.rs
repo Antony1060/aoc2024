@@ -3,15 +3,16 @@ const INPUT: &str = include_str!("../input.txt");
 fn main() {
     let mut stones = INPUT
         .split(' ')
-        .map(|it| it.parse::<u32>().unwrap())
+        .map(|it| it.parse::<u64>().unwrap())
         .collect::<Vec<_>>();
 
-    for i in 0..75 {
-        let mut new = Vec::with_capacity(stones.len());
+    for i in 0..25 {
+        dbg!(i);
+        let mut new = Vec::with_capacity(stones.len() * 2);
 
-        for stone in stones.iter() {
+        for stone in stones {
             // let stone = stones[idx];
-            if *stone == 0 {
+            if stone == 0 {
                 new.push(1);
                 // idx += 1;
                 continue;
@@ -19,7 +20,7 @@ fn main() {
 
             let len = {
                 let mut sum = 0;
-                let mut copy = *stone;
+                let mut copy = stone;
 
                 while copy != 0 {
                     sum += 1;
@@ -30,7 +31,7 @@ fn main() {
             };
 
             if len % 2 == 0 {
-                let pow = 10u64.pow(len / 2) as u32;
+                let pow = 10u64.pow(len / 2);
                 new.push(stone % pow);
                 new.push(stone / pow);
                 continue;
@@ -39,8 +40,6 @@ fn main() {
             new.push(stone * 2024);
         }
 
-        stones.clear();
-        drop(stones);
         stones = new;
     }
 
