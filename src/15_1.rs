@@ -7,20 +7,7 @@ fn main() {
 
     let mut matrix = board
         .lines()
-        .map(|it| {
-            it.chars()
-                .flat_map(|c| {
-                    match c {
-                        '.' => "..",
-                        '#' => "##",
-                        'O' => "[]",
-                        '@' => "@.",
-                        _ => unreachable!(),
-                    }
-                    .chars()
-                })
-                .collect::<Vec<_>>()
-        })
+        .map(|it| it.chars().collect::<Vec<_>>())
         .collect::<Vec<_>>();
 
     let moves = moves.split("\n").fold(String::new(), |acc, it| acc + it);
@@ -78,27 +65,9 @@ fn main() {
         .iter()
         .enumerate()
         .flat_map(|(i, line)| {
-            let m_height = matrix.len();
-            let m_width = matrix[0].len();
-
-            line.iter().enumerate().filter_map(move |(j, &val)| {
-                if val != '[' && val != ']' {
-                    None
-                } else {
-                    Some(
-                        if (i - 1) < (m_height - 1 - i) {
-                            i - 1
-                        } else {
-                            m_height - 1 - i
-                        } * 100
-                            + if (j - 1) < (m_width - 1 - j - 1) {
-                                j - 1
-                            } else {
-                                m_width - 1 - j - 1
-                            },
-                    )
-                }
-            })
+            line.iter()
+                .enumerate()
+                .filter_map(move |(j, &val)| if val != 'O' { None } else { Some(i * 100 + j) })
         })
         .sum::<usize>();
 
