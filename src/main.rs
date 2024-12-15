@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::io;
 
 const INPUT: &str = include_str!("../input.txt");
 
@@ -11,10 +10,16 @@ fn find_move_boxes(
     let mut ret = HashSet::new();
 
     if matrix[curr.0][curr.1] == '#' {
+        if dir.1 != 0 && matrix[curr.0][(curr.1 as isize - dir.1) as usize] == '.' {
+            return Some(ret);
+        }
         return None;
     }
 
     if matrix[curr.0][curr.1] == ']' {
+        if dir.1 != 0 {
+            return Some(ret);
+        }
         curr.1 -= 1;
     }
 
@@ -22,18 +27,15 @@ fn find_move_boxes(
         return Some(ret);
     }
 
-    // println!("at {} {}: {}", curr.0, curr.1, matrix[curr.0][curr.1]);
     ret.insert((curr.0, curr.1));
 
     match dir {
         (1, 0) => {
             ret.extend(find_move_boxes(matrix, (curr.0 + 1, curr.1), dir)?);
-            // ret.extend(find_move_boxes(matrix, (curr.0 + 1, curr.1 - 1), dir)?);
             ret.extend(find_move_boxes(matrix, (curr.0 + 1, curr.1 + 1), dir)?);
         }
         (-1, 0) => {
             ret.extend(find_move_boxes(matrix, (curr.0 - 1, curr.1), dir)?);
-            // ret.extend(find_move_boxes(matrix, (curr.0 - 1, curr.1 - 1), dir)?);
             ret.extend(find_move_boxes(matrix, (curr.0 - 1, curr.1 + 1), dir)?);
         }
         (0, 1) => {
@@ -84,19 +86,7 @@ fn main() {
         }
     }
 
-    // println!("{}", moves);
-
-    for line in matrix.iter() {
-        for val in line.iter() {
-            print!("{}", val);
-        }
-
-        println!();
-    }
-
     for it in moves.chars() {
-        print!("{}[2J", 27 as char);
-        println!("doing {}", it);
         let dir: (isize, isize) = match it {
             '>' => (0, 1),
             '<' => (0, -1),
@@ -116,17 +106,15 @@ fn main() {
                 );
                 matrix[curr.0][curr.1] = '@';
             }
-            it @ '[' | it @ ']' => {
+            it @ '[' | it @ ']' => 'm: {
                 if it == ']' {
                     lookup.1 -= 1;
                 }
+
                 let moves = find_move_boxes(&matrix, (lookup.0 as usize, lookup.1 as usize), dir);
 
-                // dbg!(&moves);
-
                 let Some(moves) = moves else {
-                    println!("found no moves");
-                    continue;
+                    break 'm;
                 };
 
                 for (i, j) in moves.iter() {
@@ -149,43 +137,23 @@ fn main() {
             }
             _ => {}
         }
+    }
 
-        for line in matrix.iter() {
-            for val in line.iter() {
-                print!("{}", val);
-            }
-
-            println!();
+    for line in matrix.iter() {
+        for val in line.iter() {
+            print!("{}", val);
         }
 
-        let _ = io::stdin().read_line(&mut String::new());
+        println!();
     }
 
     let result = matrix
         .iter()
         .enumerate()
         .flat_map(|(i, line)| {
-            let m_height = matrix.len();
-            let m_width = matrix[0].len();
-
-            line.iter().enumerate().filter_map(move |(j, &val)| {
-                if val != '[' && val != ']' {
-                    None
-                } else {
-                    Some(
-                        if i < (m_height - 1 - i) {
-                            i
-                        } else {
-                            m_height - 1 - i
-                        } * 100
-                            + if j < (m_width - 1 - j) {
-                                j
-                            } else {
-                                m_width - 1 - j
-                            },
-                    )
-                }
-            })
+            line.iter()
+                .enumerate()
+                .filter_map(move |(j, &val)| if val != '[' { None } else { Some(i * 100 + j) })
         })
         .sum::<usize>();
 
