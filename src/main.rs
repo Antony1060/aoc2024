@@ -1,4 +1,52 @@
+use std::collections::HashSet;
+use std::io;
+
 const INPUT: &str = include_str!("../input.txt");
+
+fn find_move_boxes(
+    matrix: &[Vec<char>],
+    mut curr: (usize, usize),
+    dir: (isize, isize),
+) -> Option<HashSet<(usize, usize)>> {
+    let mut ret = HashSet::new();
+
+    if matrix[curr.0][curr.1] == '#' {
+        return None;
+    }
+
+    if matrix[curr.0][curr.1] == ']' {
+        curr.1 -= 1;
+    }
+
+    if matrix[curr.0][curr.1] == '.' {
+        return Some(ret);
+    }
+
+    // println!("at {} {}: {}", curr.0, curr.1, matrix[curr.0][curr.1]);
+    ret.insert((curr.0, curr.1));
+
+    match dir {
+        (1, 0) => {
+            ret.extend(find_move_boxes(matrix, (curr.0 + 1, curr.1), dir)?);
+            // ret.extend(find_move_boxes(matrix, (curr.0 + 1, curr.1 - 1), dir)?);
+            ret.extend(find_move_boxes(matrix, (curr.0 + 1, curr.1 + 1), dir)?);
+        }
+        (-1, 0) => {
+            ret.extend(find_move_boxes(matrix, (curr.0 - 1, curr.1), dir)?);
+            // ret.extend(find_move_boxes(matrix, (curr.0 - 1, curr.1 - 1), dir)?);
+            ret.extend(find_move_boxes(matrix, (curr.0 - 1, curr.1 + 1), dir)?);
+        }
+        (0, 1) => {
+            ret.extend(find_move_boxes(matrix, (curr.0, curr.1 + 2), dir)?);
+        }
+        (0, -1) => {
+            ret.extend(find_move_boxes(matrix, (curr.0, curr.1 - 2), dir)?);
+        }
+        _ => unreachable!(),
+    }
+
+    Some(ret)
+}
 
 fn main() {
     let [board, moves] = INPUT.split("\n\n").collect::<Vec<_>>()[..] else {
@@ -36,7 +84,19 @@ fn main() {
         }
     }
 
+    // println!("{}", moves);
+
+    for line in matrix.iter() {
+        for val in line.iter() {
+            print!("{}", val);
+        }
+
+        println!();
+    }
+
     for it in moves.chars() {
+        print!("{}[2J", 27 as char);
+        println!("doing {}", it);
         let dir: (isize, isize) = match it {
             '>' => (0, 1),
             '<' => (0, -1),
@@ -46,32 +106,59 @@ fn main() {
         };
 
         let mut lookup = (curr.0 as isize + dir.0, curr.1 as isize + dir.1);
-        while matrix[lookup.0 as usize][lookup.1 as usize] == 'O' {
-            let new_lookup = (lookup.0 + dir.0, lookup.1 + dir.1);
-            if new_lookup.0 < 0
-                || new_lookup.1 < 0
-                || new_lookup.0 >= matrix.len() as isize
-                || new_lookup.1 >= matrix[0].len() as isize
-            {
-                break;
+
+        match matrix[lookup.0 as usize][lookup.1 as usize] {
+            '.' => {
+                matrix[curr.0][curr.1] = '.';
+                curr = (
+                    (curr.0 as isize + dir.0) as usize,
+                    (curr.1 as isize + dir.1) as usize,
+                );
+                matrix[curr.0][curr.1] = '@';
+            }
+            it @ '[' | it @ ']' => {
+                if it == ']' {
+                    lookup.1 -= 1;
+                }
+                let moves = find_move_boxes(&matrix, (lookup.0 as usize, lookup.1 as usize), dir);
+
+                // dbg!(&moves);
+
+                let Some(moves) = moves else {
+                    println!("found no moves");
+                    continue;
+                };
+
+                for (i, j) in moves.iter() {
+                    matrix[*i][*j] = '.';
+                    matrix[*i][*j + 1] = '.';
+                }
+
+                for (i, j) in moves {
+                    let new_pos = (i as isize + dir.0, j as isize + dir.1);
+                    matrix[new_pos.0 as usize][new_pos.1 as usize] = '[';
+                    matrix[new_pos.0 as usize][new_pos.1 as usize + 1] = ']';
+                }
+
+                matrix[curr.0][curr.1] = '.';
+                curr = (
+                    (curr.0 as isize + dir.0) as usize,
+                    (curr.1 as isize + dir.1) as usize,
+                );
+                matrix[curr.0][curr.1] = '@';
+            }
+            _ => {}
+        }
+
+        for line in matrix.iter() {
+            for val in line.iter() {
+                print!("{}", val);
             }
 
-            lookup = new_lookup;
+            println!();
         }
 
-        let lookup = (lookup.0 as usize, lookup.1 as usize);
-
-        if matrix[lookup.0][lookup.1] == '#' {
-            continue;
-        }
-
-        matrix[lookup.0][lookup.1] = 'O';
-        matrix[curr.0][curr.1] = '.';
-        curr = (
-            (curr.0 as isize + dir.0) as usize,
-            (curr.1 as isize + dir.1) as usize,
-        );
-        matrix[curr.0][curr.1] = '@';
+        let _ = io::stdin().read_line(&mut String::new());
     }
 
     let result = matrix
@@ -86,15 +173,15 @@ fn main() {
                     None
                 } else {
                     Some(
-                        if (i - 1) < (m_height - 1 - i) {
-                            i - 1
+                        if i < (m_height - 1 - i) {
+                            i
                         } else {
                             m_height - 1 - i
                         } * 100
-                            + if (j - 1) < (m_width - 1 - j - 1) {
-                                j - 1
+                            + if j < (m_width - 1 - j) {
+                                j
                             } else {
-                                m_width - 1 - j - 1
+                                m_width - 1 - j
                             },
                     )
                 }
