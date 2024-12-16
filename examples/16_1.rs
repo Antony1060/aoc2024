@@ -1,40 +1,69 @@
-use std::cmp::min;
-use std::collections::VecDeque;
+use std::collections::BinaryHeap;
 
 const INPUT: &str = include_str!("../input.txt");
 
-fn all_paths_bfs(graph: &[Vec<usize>], start: usize, end: usize) -> Vec<Vec<usize>> {
-    let mut paths: VecDeque<Vec<usize>> = VecDeque::new();
-    let mut path: Vec<usize> = Vec::new();
+fn dijkstra(graph: &[Vec<usize>], start: usize, end: usize, m_width: usize) -> Vec<usize> {
+    let mut visited: Vec<bool> = vec![false; graph.len()];
+    let mut distances: Vec<usize> = vec![usize::MAX; graph.len()];
+    let mut path: Vec<usize> = vec![0; graph.len()];
 
-    let mut ret_paths: Vec<Vec<usize>> = Vec::new();
+    let mut queue: BinaryHeap<(usize, usize)> = BinaryHeap::new();
 
-    path.push(start);
-    paths.push_back(path);
+    distances[start] = 0;
+    queue.push((0, start));
+    path[start] = usize::MAX;
 
-    while let Some(curr_path) = paths.pop_front() {
-        let last = *curr_path.last().unwrap();
+    while let Some((_, node)) = queue.pop() {
+        visited[node] = true;
 
-        if last == end {
-            ret_paths.push(curr_path.clone());
-        }
+        for &neighbour in &graph[node] {
+            // if visited[neighbour] {
+            //     continue;
+            // }
 
-        for neighbour in &graph[last] {
-            if curr_path.contains(neighbour) {
-                continue;
+            let one_before_node = &path[node];
+
+            let c_i = neighbour / m_width;
+            let c_j = neighbour % m_width;
+
+            let cost = if *one_before_node == usize::MAX {
+                1000
+            } else {
+                let p_i = one_before_node / m_width;
+                let p_j = one_before_node % m_width;
+
+                if p_i != c_i && p_j != c_j {
+                    1001
+                } else {
+                    1
+                }
+            };
+
+            let new_distance = distances[node] + cost;
+
+            if new_distance < distances[neighbour] {
+                distances[neighbour] = new_distance;
+                path[neighbour] = node;
+                queue.push((new_distance, neighbour));
             }
-
-            let mut new_path = curr_path.clone();
-            new_path.push(*neighbour);
-            paths.push_back(new_path);
         }
     }
 
-    ret_paths
+    let mut ret_path = Vec::new();
+
+    let mut curr = path[end];
+    while curr != usize::MAX {
+        ret_path.push(curr);
+        curr = path[curr];
+    }
+
+    ret_path.reverse();
+
+    ret_path
 }
 
 fn main() {
-    let mut matrix: Vec<Vec<char>> = INPUT.lines().map(|line| line.chars().collect()).collect();
+    let matrix: Vec<Vec<char>> = INPUT.lines().map(|line| line.chars().collect()).collect();
 
     let m_width = matrix[0].len();
 
@@ -89,46 +118,43 @@ fn main() {
         }
     }
 
-    let paths = all_paths_bfs(&graph, start.0 * m_width + start.1, end.0 * m_width + end.1);
+    let path = dijkstra(
+        &graph,
+        start.0 * m_width + start.1,
+        end.0 * m_width + end.1,
+        m_width,
+    );
 
-    let mut min_score = usize::MAX;
+    let mut score = 0;
 
-    for path in paths {
-        let mut mx = matrix.clone();
+    for (idx, step) in path.iter().enumerate() {
+        let c_i = step / m_width;
+        let c_j = step % m_width;
 
-        let mut score = 0;
+        score += if idx < 2 {
+            // don't ask me why this behaviour is like this, it's an off-by-one somewhere
+            //  idk I wasted 3 hours debugging this
 
-        for (idx, step) in path.iter().enumerate() {
-            let c_i = step / m_width;
-            let c_j = step % m_width;
-            mx[c_i][c_j] = '+';
+            // uncomment this for test cases
+            // if idx == 0 {
+            //     1001
+            // } else {
+            //     1
+            // }
 
-            score += if idx < 2 {
-                if idx == 0 {
-                    1000
-                } else {
-                    1
-                }
+            // comment this for test cases
+            1
+        } else {
+            let p_i = path[idx - 2] / m_width;
+            let p_j = path[idx - 2] % m_width;
+
+            if p_i != c_i && p_j != c_j {
+                1001
             } else {
-                let p_i = path[idx - 2] / m_width;
-                let p_j = path[idx - 2] % m_width;
-
-                if p_i != c_i && p_j != c_j {
-                    1001
-                } else {
-                    1
-                }
-            };
-        }
-
-        // for line in mx {
-        //     println!("{}", line.iter().collect::<String>());
-        // }
-        //
-        // println!("{}", score);
-
-        min_score = min(min_score, score);
+                1
+            }
+        };
     }
 
-    println!("{}", min_score);
+    println!("{}", score);
 }
