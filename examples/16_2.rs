@@ -71,16 +71,6 @@ fn dijkstra(
                 direction: new_direction,
             };
 
-            if neighbour == 134 {
-                dbg!(
-                    node,
-                    distance,
-                    new_cost,
-                    new_distance,
-                    distances.get(&neighbour_node)
-                );
-            }
-
             match distances.get(&neighbour_node) {
                 Some(&dist) if new_distance > dist => {}
                 Some(&dist) if dist == new_distance => {
