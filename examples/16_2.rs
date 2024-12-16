@@ -82,10 +82,11 @@ fn dijkstra(
             }
 
             match distances.get(&neighbour_node) {
+                Some(&dist) if new_distance > dist => {}
                 Some(&dist) if dist == new_distance => {
                     history.entry(neighbour_node).or_default().push(node);
                 }
-                None => {
+                _ => {
                     history.insert(neighbour_node, vec![node]);
                     distances.insert(neighbour_node, new_distance);
                     queue.push(DijsktraState {
@@ -93,7 +94,6 @@ fn dijkstra(
                         node: neighbour_node,
                     });
                 }
-                _ => {}
             }
         }
     }
