@@ -3,24 +3,28 @@ use std::collections::{BinaryHeap, HashMap, HashSet, LinkedList};
 
 const INPUT: &str = include_str!("../input.txt");
 
-#[derive(Clone, Eq, PartialEq)]
-struct DijsktraNode {
-    distance: usize,
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+struct DijkstraNode {
     node: usize,
     direction: isize,
-    cost: usize,
 }
 
-impl Ord for DijsktraNode {
+#[derive(Clone, Eq, PartialEq, Hash)]
+struct DijsktraState {
+    node: DijkstraNode,
+    distance: usize,
+}
+
+impl Ord for DijsktraState {
     fn cmp(&self, other: &Self) -> Ordering {
         other
-            .cost
-            .cmp(&self.cost)
-            .then_with(|| self.node.cmp(&other.node))
+            .distance
+            .cmp(&self.distance)
+            .then_with(|| self.node.node.cmp(&other.node.node))
     }
 }
 
-impl PartialOrd for DijsktraNode {
+impl PartialOrd for DijsktraState {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
@@ -30,52 +34,63 @@ fn dijkstra(
     graph: &[Vec<usize>],
     start: usize,
     end: usize,
-    history: &mut HashMap<(usize, isize), Vec<(usize, isize)>>,
+    history: &mut HashMap<DijkstraNode, Vec<DijkstraNode>>,
 ) -> usize {
-    let mut distances: Vec<usize> = vec![usize::MAX; graph.len()];
-    let mut path: Vec<usize> = vec![0; graph.len()];
+    let mut distances: HashMap<DijkstraNode, usize> = HashMap::new();
 
-    let mut queue: BinaryHeap<DijsktraNode> = BinaryHeap::new();
+    let mut queue: BinaryHeap<DijsktraState> = BinaryHeap::new();
 
-    distances[start] = 0;
-    queue.push(DijsktraNode {
-        distance: 0,
+    let start_node = DijkstraNode {
         node: start,
         direction: 1,
-        cost: 1,
+    };
+
+    distances.insert(start_node, 0);
+
+    queue.push(DijsktraState {
+        distance: 0,
+        node: start_node,
     });
 
-    while let Some(DijsktraNode {
-        node,
-        direction,
-        cost,
-        ..
-    }) = queue.pop()
-    {
-        for &neighbour in &graph[node] {
-            let new_direction = neighbour as isize - node as isize;
-            let new_cost = if direction == new_direction { 1 } else { 1001 };
-            let new_distance = distances[node] + new_cost;
+    while let Some(DijsktraState { node, distance }) = queue.pop() {
+        if node.node == end {
+            return distance;
+        }
 
-            if new_distance > distances[neighbour] {
-                continue;
+        for &neighbour in &graph[node.node] {
+            let new_direction = neighbour as isize - node.node as isize;
+            let new_cost = if node.direction == new_direction {
+                1
+            } else {
+                1001
+            };
+            let new_distance = distance + new_cost;
+
+            let neighbour_node = DijkstraNode {
+                node: neighbour,
+                direction: new_direction,
             };
 
-            match new_distance {
-                it if it == distances[neighbour] => {
-                    history
-                        .entry((neighbour, new_direction))
-                        .or_default()
-                        .push((node, direction));
+            if neighbour == 134 {
+                dbg!(
+                    node,
+                    distance,
+                    new_cost,
+                    new_distance,
+                    distances.get(&neighbour_node)
+                );
+            }
+
+            match distances.get(&neighbour_node) {
+                Some(&dist) if dist == new_distance => {
+                    history.entry(neighbour_node).or_default().push(node);
                 }
-                it if it < distances[neighbour] => {
-                    history.insert((neighbour, new_direction), vec![(node, direction)]);
-                    distances[neighbour] = new_distance;
-                    queue.push(DijsktraNode {
+                None => {
+                    history.insert(neighbour_node, vec![node]);
+                    distances.insert(neighbour_node, new_distance);
+                    queue.push(DijsktraState {
                         distance: new_distance,
-                        node: neighbour,
-                        cost: new_cost,
-                        direction: new_direction,
+                        node: neighbour_node,
                     });
                 }
                 _ => {}
@@ -83,7 +98,7 @@ fn dijkstra(
         }
     }
 
-    distances[end]
+    *distances.iter().find(|(key, _)| key.node == end).unwrap().1
 }
 
 fn main() {
@@ -132,35 +147,40 @@ fn main() {
     let start = start.0 * m_width + start.1;
     let end = end.0 * m_width + end.1;
 
-    println!("{:?}", (start, end));
-
     let mut history = HashMap::new();
 
     let score = dijkstra(&graph, start, end, &mut history);
+    let mut visited: HashSet<DijkstraNode> = HashSet::new();
+    let mut unique: HashSet<usize> = HashSet::new();
 
-    let mut total = HashSet::new();
     let mut stack = LinkedList::new();
-    stack.push_back((end, -(m_width as isize)));
+
+    for end_dir in [-1, 1, -(m_width as isize), m_width as isize] {
+        stack.push_back(DijkstraNode {
+            node: end,
+            direction: end_dir,
+        });
+    }
 
     while let Some(node) = stack.pop_front() {
-        if !total.insert(node) {
+        if visited.contains(&node) {
             continue;
         }
 
-        matrix[node.0 / m_width][node.0 % m_width] = 'O';
+        visited.insert(node);
+        unique.insert(node.node);
+
+        matrix[node.node / m_width][node.node % m_width] = 'O';
 
         if let Some(path) = history.get(&node) {
             stack.extend(path.iter().cloned());
-            // for &neighbour in path {
-            //     stack.push_back(neighbour);
-            //
-            // }
         }
     }
 
     for line in matrix {
         println!("{}", line.iter().collect::<String>());
     }
+
+    println!("{}", unique.len());
     println!("{}", score);
-    println!("{}", total.len());
 }
