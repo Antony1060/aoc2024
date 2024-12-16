@@ -1,97 +1,84 @@
-use std::collections::{BinaryHeap, HashSet, VecDeque};
+use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashSet, LinkedList};
 
 const INPUT: &str = include_str!("../input.txt");
 
-fn dijkstra(graph: &[Vec<usize>], start: usize, end: usize, m_width: usize) -> Vec<usize> {
-    let mut visited: Vec<bool> = vec![false; graph.len()];
+#[derive(Clone, Eq, PartialEq)]
+struct DijsktraNode {
+    distance: usize,
+    node: usize,
+    direction: isize,
+    cost: usize,
+}
+
+impl Ord for DijsktraNode {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other
+            .cost
+            .cmp(&self.cost)
+            .then_with(|| self.node.cmp(&other.node))
+    }
+}
+
+impl PartialOrd for DijsktraNode {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+fn dijkstra(
+    graph: &[Vec<usize>],
+    start: usize,
+    end: usize,
+    history: &mut [HashSet<usize>],
+) -> usize {
     let mut distances: Vec<usize> = vec![usize::MAX; graph.len()];
     let mut path: Vec<usize> = vec![0; graph.len()];
 
-    let mut queue: BinaryHeap<(usize, usize)> = BinaryHeap::new();
+    let mut queue: BinaryHeap<DijsktraNode> = BinaryHeap::new();
 
     distances[start] = 0;
-    queue.push((0, start));
+    queue.push(DijsktraNode {
+        distance: 0,
+        node: start,
+        direction: 1,
+        cost: 1,
+    });
     path[start] = usize::MAX;
 
-    while let Some((_, node)) = queue.pop() {
-        visited[node] = true;
-
+    while let Some(DijsktraNode {
+        node,
+        direction,
+        cost,
+        ..
+    }) = queue.pop()
+    {
         for &neighbour in &graph[node] {
-            // if visited[neighbour] {
-            //     continue;
-            // }
+            let new_distance = distances[node] + cost;
 
-            let one_before_node = &path[node];
+            let new_direction = neighbour as isize - node as isize;
+            let new_cost = if direction == new_direction { 1 } else { 1001 };
 
-            let c_i = neighbour / m_width;
-            let c_j = neighbour % m_width;
-
-            let cost = if *one_before_node == usize::MAX {
-                1000
-            } else {
-                let p_i = one_before_node / m_width;
-                let p_j = one_before_node % m_width;
-
-                if p_i != c_i && p_j != c_j {
-                    1001
-                } else {
-                    1
-                }
+            if new_distance > distances[neighbour] {
+                continue;
             };
 
-            let new_distance = distances[node] + cost;
+            history[neighbour].insert(node);
 
             if new_distance < distances[neighbour] {
                 distances[neighbour] = new_distance;
                 path[neighbour] = node;
-                queue.push((new_distance, neighbour));
+                queue.push(DijsktraNode {
+                    distance: new_distance,
+                    node: neighbour,
+                    cost: new_cost,
+                    direction: new_direction,
+                });
             }
         }
     }
 
-    compute_path(&path, start, end)
-}
-
-fn compute_path(raw_path: &[usize], start: usize, end: usize) -> Vec<usize> {
-    let mut ret_path = Vec::new();
-
-    let mut curr = raw_path[end];
-    while curr != start && curr != usize::MAX {
-        ret_path.push(curr);
-        curr = raw_path[curr];
-    }
-
-    ret_path.reverse();
-
-    ret_path
-}
-
-fn compute_score(path: &[usize], m_width: usize) -> u64 {
-    let mut score = 0;
-
-    for (idx, step) in path.iter().enumerate() {
-        let c_i = step / m_width;
-        let c_j = step % m_width;
-
-        score += if idx < 2 {
-            if idx == 1 && step.abs_diff(path[idx - 1]) == m_width {
-                1001
-            } else {
-                1
-            }
-        } else {
-            let p_i = path[idx - 2] / m_width;
-            let p_j = path[idx - 2] % m_width;
-
-            if p_i != c_i && p_j != c_j {
-                1001
-            } else {
-                1
-            }
-        };
-    }
-
-    score + 1
+    distances[end]
 }
 
 fn main() {
@@ -125,96 +112,47 @@ fn main() {
         }
     }
 
-    let mut start = (0, 0);
+    let start = matrix
+        .iter()
+        .enumerate()
+        .find_map(|(idx, line)| line.iter().position(|it| *it == 'S').map(|it| (idx, it)))
+        .unwrap();
 
-    'outer: for (i, line) in matrix.iter().enumerate() {
-        for (j, val) in line.iter().enumerate() {
-            if *val == 'S' {
-                start = (i, j);
-                break 'outer;
-            }
-        }
+    let end = matrix
+        .iter()
+        .enumerate()
+        .find_map(|(idx, line)| line.iter().position(|it| *it == 'E').map(|it| (idx, it)))
+        .unwrap();
+
+    let mut history: Vec<HashSet<usize>> = Vec::with_capacity(graph.len());
+    for _ in 0..history.capacity() {
+        history.push(HashSet::new());
     }
 
-    let mut end = (0, 0);
-
-    'outer: for (i, line) in matrix.iter().enumerate() {
-        for (j, val) in line.iter().enumerate() {
-            if *val == 'E' {
-                end = (i, j);
-                break 'outer;
-            }
-        }
-    }
-
-    let mut result: HashSet<usize> = HashSet::new();
-
-    let path = dijkstra(
+    let score = dijkstra(
         &graph,
         start.0 * m_width + start.1,
         end.0 * m_width + end.1,
-        m_width,
+        &mut history,
     );
 
-    let base_score = compute_score(&path, m_width);
+    let mut total = HashSet::new();
+    let mut stack: LinkedList<usize> = LinkedList::new();
+    stack.push_back(end.0 * m_width + end.1);
 
-    let mut to_process: VecDeque<usize> = VecDeque::new();
-    let mut visited: HashSet<usize> = HashSet::new();
+    while let Some(curr) = stack.pop_front() {
+        total.insert(curr);
+        matrix[curr / m_width][curr % m_width] = 'O';
 
-    for point in path.iter() {
-        to_process.push_back(*point);
-    }
-
-    while !to_process.is_empty() {
-        let curr = to_process.pop_front().unwrap();
-        visited.insert(curr);
-
-        let sub_path1 = dijkstra(&graph, start.0 * m_width + start.1, curr, m_width);
-        let sub_path2 = dijkstra(&graph, curr, end.0 * m_width + end.1, m_width);
-
-        let score1 = compute_score(&sub_path1, m_width);
-        let score2 = compute_score(&sub_path2, m_width);
-
-        // println!("{}", score1 + score2);
-
-        if score1 + score2 != base_score {
-            continue;
+        for &it in history[curr].iter() {
+            stack.push_back(it);
         }
-
-        result.insert(curr);
-
-        let near = vec![
-            curr as isize - m_width as isize,
-            curr as isize + m_width as isize,
-            curr as isize - 1,
-            curr as isize + 1,
-        ]
-        .into_iter()
-        .filter(|&it| it < graph.len() as isize && it >= 0)
-        .map(|it| it as usize)
-        .filter(|it| !visited.contains(it))
-        .filter(|it| matrix[it / m_width][it % m_width] != '#')
-        .collect::<Vec<usize>>();
-
-        for it in near {
-            to_process.push_back(it);
-        }
-
-        for it in sub_path1 {
-            to_process.push_back(it);
-        }
-    }
-
-    result.extend(&path);
-
-    for &it in result.iter() {
-        matrix[it / m_width][it % m_width] = 'O';
     }
 
     for line in matrix {
         println!("{}", line.iter().collect::<String>());
     }
 
-    println!("{}", base_score);
-    println!("{}", result.len());
+    println!("{}", score);
+    println!("{}", total.len());
 }
