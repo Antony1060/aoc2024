@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashSet, LinkedList};
+use std::collections::{BinaryHeap, HashMap, HashSet, LinkedList};
 
 const INPUT: &str = include_str!("../input.txt");
 
@@ -30,7 +30,7 @@ fn dijkstra(
     graph: &[Vec<usize>],
     start: usize,
     end: usize,
-    history: &mut [HashSet<usize>],
+    history: &mut HashMap<(usize, isize), Vec<(usize, isize)>>,
 ) -> usize {
     let mut distances: Vec<usize> = vec![usize::MAX; graph.len()];
     let mut path: Vec<usize> = vec![0; graph.len()];
@@ -44,7 +44,6 @@ fn dijkstra(
         direction: 1,
         cost: 1,
     });
-    path[start] = usize::MAX;
 
     while let Some(DijsktraNode {
         node,
@@ -54,26 +53,32 @@ fn dijkstra(
     }) = queue.pop()
     {
         for &neighbour in &graph[node] {
-            let new_distance = distances[node] + cost;
-
             let new_direction = neighbour as isize - node as isize;
             let new_cost = if direction == new_direction { 1 } else { 1001 };
+            let new_distance = distances[node] + new_cost;
 
             if new_distance > distances[neighbour] {
                 continue;
             };
 
-            history[neighbour].insert(node);
-
-            if new_distance < distances[neighbour] {
-                distances[neighbour] = new_distance;
-                path[neighbour] = node;
-                queue.push(DijsktraNode {
-                    distance: new_distance,
-                    node: neighbour,
-                    cost: new_cost,
-                    direction: new_direction,
-                });
+            match new_distance {
+                it if it == distances[neighbour] => {
+                    history
+                        .entry((neighbour, new_direction))
+                        .or_default()
+                        .push((node, direction));
+                }
+                it if it < distances[neighbour] => {
+                    history.insert((neighbour, new_direction), vec![(node, direction)]);
+                    distances[neighbour] = new_distance;
+                    queue.push(DijsktraNode {
+                        distance: new_distance,
+                        node: neighbour,
+                        cost: new_cost,
+                        direction: new_direction,
+                    });
+                }
+                _ => {}
             }
         }
     }
@@ -124,35 +129,38 @@ fn main() {
         .find_map(|(idx, line)| line.iter().position(|it| *it == 'E').map(|it| (idx, it)))
         .unwrap();
 
-    let mut history: Vec<HashSet<usize>> = Vec::with_capacity(graph.len());
-    for _ in 0..history.capacity() {
-        history.push(HashSet::new());
-    }
+    let start = start.0 * m_width + start.1;
+    let end = end.0 * m_width + end.1;
 
-    let score = dijkstra(
-        &graph,
-        start.0 * m_width + start.1,
-        end.0 * m_width + end.1,
-        &mut history,
-    );
+    println!("{:?}", (start, end));
+
+    let mut history = HashMap::new();
+
+    let score = dijkstra(&graph, start, end, &mut history);
 
     let mut total = HashSet::new();
-    let mut stack: LinkedList<usize> = LinkedList::new();
-    stack.push_back(end.0 * m_width + end.1);
+    let mut stack = LinkedList::new();
+    stack.push_back((end, -(m_width as isize)));
 
-    while let Some(curr) = stack.pop_front() {
-        total.insert(curr);
-        matrix[curr / m_width][curr % m_width] = 'O';
+    while let Some(node) = stack.pop_front() {
+        if !total.insert(node) {
+            continue;
+        }
 
-        for &it in history[curr].iter() {
-            stack.push_back(it);
+        matrix[node.0 / m_width][node.0 % m_width] = 'O';
+
+        if let Some(path) = history.get(&node) {
+            stack.extend(path.iter().cloned());
+            // for &neighbour in path {
+            //     stack.push_back(neighbour);
+            //
+            // }
         }
     }
 
     for line in matrix {
         println!("{}", line.iter().collect::<String>());
     }
-
     println!("{}", score);
     println!("{}", total.len());
 }
