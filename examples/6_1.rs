@@ -66,9 +66,9 @@ fn main() {
 
     let (mut guard_x, mut guard_y) = (usize::MAX, usize::MAX);
 
-    for i in 0..matrix.len() {
-        for j in 0..matrix[i].len() {
-            if "^><v".contains(matrix[i][j]) {
+    for (i, line) in matrix.iter().enumerate() {
+        for (j, val) in line.iter().enumerate() {
+            if "^><v".contains(*val) {
                 guard_x = i;
                 guard_y = j;
                 break;

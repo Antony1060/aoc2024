@@ -6,8 +6,7 @@ fn main() {
         .map(|it| it.parse::<u64>().unwrap())
         .collect::<Vec<_>>();
 
-    for i in 0..25 {
-        dbg!(i);
+    for _ in 0..25 {
         let mut new = Vec::with_capacity(stones.len() * 2);
 
         for stone in stones {

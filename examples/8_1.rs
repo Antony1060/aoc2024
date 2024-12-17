@@ -20,7 +20,7 @@ fn main() {
 
     let pairs: Vec<CoordPair> = antennas
         .into_iter()
-        .flat_map(|(char, antennas)| {
+        .flat_map(|(_, antennas)| {
             let mut pairs = vec![];
 
             for (i, a) in antennas.iter().enumerate() {

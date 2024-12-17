@@ -60,8 +60,6 @@ fn main() {
 
         visited.extend(region.iter());
 
-        // println!("region: {}", region.len());
-
         let area = region.len();
         let perimeter = region
             .iter()
@@ -89,9 +87,6 @@ fn main() {
                 count
             })
             .sum::<usize>();
-
-        // println!("\tarea: {}", area);
-        // println!("\tperimeter: {}", perimeter);
 
         result += area * perimeter;
     }

@@ -85,23 +85,21 @@ fn walk(matrix: &mut [Vec<char>], (mut x, mut y): (usize, usize)) -> Option<usiz
         result += add;
     }
 
-    dbg!(iter);
-
     Some(result)
 }
 
 // this is probably the most botched solution this aoc lol
 fn main() {
-    let mut matrix = INPUT
+    let matrix = INPUT
         .split("\n")
         .map(|line| line.chars().collect::<Vec<_>>())
         .collect::<Vec<_>>();
 
     let (mut guard_x, mut guard_y) = (usize::MAX, usize::MAX);
 
-    for i in 0..matrix.len() {
-        for j in 0..matrix[i].len() {
-            if "^><v".contains(matrix[i][j]) {
+    for (i, line) in matrix.iter().enumerate() {
+        for (j, val) in line.iter().enumerate() {
+            if "^><v".contains(*val) {
                 guard_x = i;
                 guard_y = j;
                 break;
@@ -127,12 +125,8 @@ fn main() {
 
     let mut result = 0;
 
-    dbg!(possible_matrices.len());
-
-    for (idx, mut possible_matrix) in possible_matrices.into_iter().rev().enumerate() {
-        dbg!(idx);
+    for mut possible_matrix in possible_matrices.into_iter().rev() {
         let walkable = walk(&mut possible_matrix, (guard_x, guard_y));
-        dbg!(walkable);
 
         if walkable.is_none() {
             result += 1;

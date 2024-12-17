@@ -134,9 +134,6 @@ fn main() {
             }
         }
 
-        // println!("\tarea: {}", area);
-        // println!("\tsides: {}", sides);
-
         result += area * sides;
     }
 

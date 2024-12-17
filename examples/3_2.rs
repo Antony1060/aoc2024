@@ -3,7 +3,6 @@ use regex::Regex;
 const INPUT: &str = include_str!("../input.txt");
 
 fn do_line(line: &str) -> i32 {
-    dbg!(line);
     let re = Regex::new("(don't)(\\(\\))|(do)(\\(\\))|mul\\((\\d{1,3}),(\\d{1,3})\\)");
 
     let mut sum = 0;
@@ -11,7 +10,6 @@ fn do_line(line: &str) -> i32 {
     let mut enabled = true;
 
     for (_, [n1, n2]) in re.unwrap().captures_iter(line).map(|c| c.extract()) {
-        dbg!(format!("{} {}", &n1, &n2));
         if n1 == "don't" {
             enabled = false;
             continue;
