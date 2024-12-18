@@ -1,3 +1,4 @@
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::LinkedList;
 
 const INPUT: &str = include_str!("../input.txt");
@@ -76,19 +77,25 @@ fn main() {
 
     let grid = vec!['.'; GRID_W * GRID_H];
 
-    for i in 1..obstacles.len() {
-        let active_obstacles = &obstacles[..=i];
+    let result: usize = (1..obstacles.len())
+        .into_par_iter()
+        .find_first(|&i| {
+            let active_obstacles = &obstacles[..=i];
 
-        let mut grid = grid.clone();
-        for &active_obstacle in active_obstacles {
-            grid[active_obstacle] = '#';
-        }
+            let mut grid = grid.clone();
+            for &active_obstacle in active_obstacles {
+                grid[active_obstacle] = '#';
+            }
 
-        let result = bfs(&grid, start, end);
+            let result = bfs(&grid, start, end);
 
-        if result.is_none() {
-            println!("{},{}", obstacles[i] % GRID_W, obstacles[i] / GRID_W);
-            break;
-        }
-    }
+            result.is_none()
+        })
+        .unwrap();
+
+    println!(
+        "{},{}",
+        obstacles[result] % GRID_W,
+        obstacles[result] / GRID_W
+    );
 }
