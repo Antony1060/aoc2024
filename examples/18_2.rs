@@ -1,0 +1,94 @@
+use std::collections::LinkedList;
+
+const INPUT: &str = include_str!("../input.txt");
+
+const GRID_W: usize = 71;
+const GRID_H: usize = 71;
+
+fn neighbours(grid: &[char], curr: usize) -> Vec<usize> {
+    let mut result = Vec::new();
+
+    let x = curr % GRID_W;
+    let y = curr / GRID_W;
+
+    if x > 0 && grid[curr - 1] != '#' {
+        result.push(curr - 1);
+    }
+
+    if x < GRID_W - 1 && grid[curr + 1] != '#' {
+        result.push(curr + 1);
+    }
+
+    if y > 0 && grid[curr - GRID_W] != '#' {
+        result.push(curr - GRID_W);
+    }
+
+    if y < GRID_H - 1 && grid[curr + GRID_W] != '#' {
+        result.push(curr + GRID_W);
+    }
+
+    result
+}
+
+fn bfs(grid: &[char], start: usize, end: usize) -> Option<usize> {
+    let mut visited = vec![false; GRID_W * GRID_H];
+    let mut distances = vec![usize::MAX; GRID_W * GRID_H];
+    let mut queue = LinkedList::new();
+    queue.push_back(start);
+
+    while let Some(node) = queue.pop_front() {
+        if visited[node] {
+            continue;
+        }
+
+        visited[node] = true;
+
+        if node == end {
+            return Some(distances[node] + 1);
+        }
+
+        for neighbour in neighbours(grid, node) {
+            distances[neighbour] = distances[node] + 1;
+            queue.push_back(neighbour);
+        }
+    }
+
+    None
+}
+
+fn main() {
+    let obstacles: Vec<(usize, usize)> = INPUT
+        .lines()
+        .map(|x| {
+            let mut split = x.split(",").map(|val| val.parse::<usize>().unwrap());
+
+            (split.next().unwrap(), split.next().unwrap())
+        })
+        .collect();
+
+    let obstacles = obstacles
+        .iter()
+        .map(|it| it.1 * GRID_W + it.0)
+        .collect::<Vec<_>>();
+
+    let start = 0;
+    let end = GRID_W * GRID_H - 1;
+
+    let grid = vec!['.'; GRID_W * GRID_H];
+
+    for i in 1..obstacles.len() {
+        let active_obstacles = &obstacles[..=i];
+
+        let mut grid = grid.clone();
+        for &active_obstacle in active_obstacles {
+            grid[active_obstacle] = '#';
+        }
+
+        let result = bfs(&grid, start, end);
+
+        if result.is_none() {
+            println!("{},{}", obstacles[i] % GRID_W, obstacles[i] / GRID_W);
+            break;
+        }
+    }
+}
