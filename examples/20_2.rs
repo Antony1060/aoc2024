@@ -1,12 +1,9 @@
-use rayon::iter::IndexedParallelIterator;
-use rayon::iter::IntoParallelRefIterator;
-use rayon::iter::ParallelIterator;
-use std::collections::{HashMap, LinkedList};
-use std::io::stdin;
+use std::collections::LinkedList;
 
 const INPUT: &str = include_str!("../input.txt");
 
 const CHEATS_ALLOWED: usize = 20;
+const DIST_LIMIT: usize = 100;
 
 fn neighbours(grid: &[char], curr: usize, m_width: usize) -> Vec<usize> {
     let mut result = Vec::new();
@@ -42,6 +39,9 @@ fn bfs(
     let mut visited = vec![false; grid.len()];
     let mut distances = vec![usize::MAX; grid.len()];
     let mut path = vec![usize::MAX; grid.len()];
+
+    distances[start] = 0;
+
     let mut queue = LinkedList::new();
     queue.push_back(start);
 
@@ -81,7 +81,6 @@ fn main() {
         .collect::<Vec<_>>();
 
     let start = grid.iter().position(|it| *it == 'S').unwrap();
-
     let end = grid.iter().position(|it| *it == 'E').unwrap();
 
     let (distances, path) = bfs(&grid, start, end, m_width).unwrap();
@@ -93,7 +92,6 @@ fn main() {
     let mut full_path: Vec<usize> = Vec::new();
     full_path.push(end);
     let mut curr = path[end];
-    let mut grid_draw = grid.clone();
     while curr != usize::MAX {
         full_path.push(curr);
         curr = path[curr];
@@ -101,93 +99,37 @@ fn main() {
 
     full_path.reverse();
 
-    for &idx in &full_path {
-        grid_draw[idx] = 'O';
-    }
+    let pairs = full_path.iter().enumerate().flat_map(|(idx, i)| {
+        let (i_x, i_y) = (i / m_width, i % m_width);
 
-    let saves: Vec<usize> = full_path
-        .par_iter()
-        .enumerate()
-        .flat_map(|(idx, i)| {
-            let (i_x, i_y) = (i / m_width, i % m_width);
+        full_path[idx + 1..].iter().map(move |j| {
+            let (j_x, j_y) = (j / m_width, j % m_width);
 
-            if idx % 100 == 0 {
-                println!("{}/{}", idx + 1, full_path.len());
-            }
-
-            let mut res = Vec::new();
-
-            for j_idx in (idx + 1)..full_path.len() {
-                let mut grid_cleaned = grid.clone();
-
-                let j = full_path[j_idx];
-                let (j_x, j_y) = (j / m_width, j % m_width);
-
-                let (l_x, l_y) = (i_x.min(j_x), i_y.min(j_y));
-                let (h_x, h_y) = (i_x.max(j_x), i_y.max(j_y));
-                let manhattan = (h_x - l_x) + (h_y - l_y);
-
-                if manhattan > CHEATS_ALLOWED {
-                    continue;
-                }
-
-                for iter_i in l_x..=h_x {
-                    grid_cleaned[iter_i * m_width + (if i_y < j_y { l_y } else { h_y })] = '.';
-                }
-
-                for iter_j in l_y..=h_y {
-                    grid_cleaned[(if i_x < j_x { h_x } else { l_x }) * m_width + iter_j] = '.';
-                }
-
-                let a = i_x * m_width + i_y;
-                let b = j_x * m_width + j_y;
-
-                let dist = distances[a] + manhattan + (distances[end] - distances[b]);
-
-                if dist > distance {
-                    continue;
-                }
-
-                let saved = distance - dist;
-
-                if saved == 0 {
-                    continue;
-                }
-
-                // grid_cleaned[i_x * m_width + i_y] = 's';
-                // grid_cleaned[j_x * m_width + j_y] = 'e';
-
-                // for (idx, val) in grid_cleaned.iter().enumerate() {
-                //     print!("{val}");
-                //     if (idx + 1) % m_width == 0 {
-                //         println!()
-                //     }
-                // }
-
-                // stdin().read_line(&mut String::new());
-
-                res.push(saved);
-            }
-
-            res
+            (*i, j, i_x, i_y, j_x, j_y)
         })
-        .collect();
+    });
 
-    let mut histogram = HashMap::new();
-    for save in saves {
-        let Some(val) = histogram.get_mut(&save) else {
-            histogram.insert(save, 1);
-            continue;
-        };
+    let mut iter = 0;
+    let result: usize = pairs
+        .filter(|&(i, j, i_x, i_y, j_x, j_y)| {
+            iter += 1;
+            let manhattan = (i_x.abs_diff(j_x)) + (i_y.abs_diff(j_y));
 
-        *val += 1;
-    }
+            if manhattan > CHEATS_ALLOWED {
+                return false;
+            }
 
-    let result = histogram
-        .into_iter()
-        .filter(|(key, _)| *key >= 100)
-        .map(|(_, value)| value)
-        .sum::<usize>();
+            let dist = distances[i] + manhattan + (distances[end] - distances[*j]);
+
+            if dist > distance {
+                return false;
+            }
+
+            let saved = distance - dist;
+
+            saved >= DIST_LIMIT
+        })
+        .count();
 
     println!("Result: {}", result);
 }
