@@ -2,7 +2,76 @@ use std::collections::{HashMap, LinkedList};
 
 const INPUT: &str = include_str!("../input.txt");
 
-const ITER: usize = 2;
+const ITER: usize = 25;
+
+fn coord_of(c: char) -> (usize, usize) {
+    match c {
+        'A' => (0, 2),
+        '^' => (0, 1),
+        '<' => (1, 0),
+        'v' => (1, 1),
+        '>' => (1, 2),
+        _ => unreachable!(),
+    }
+}
+
+fn expand_a(source: &str, iter: usize, memo: &mut HashMap<(String, usize), usize>) -> usize {
+    if let Some(val) = memo.get(&(source.to_string(), iter)) {
+        return *val;
+    }
+
+    if !source.ends_with("A") {
+        unreachable!("source must end with A");
+    };
+
+    if iter == 0 {
+        memo.insert((source.to_string(), iter), source.len());
+        return source.len();
+    }
+
+    let mut curr = coord_of('A');
+    let mut res = Vec::new();
+    for input_char in source.chars() {
+        let mut sequence = String::new();
+
+        let next = coord_of(input_char);
+
+        if next.0 > curr.0 {
+            for _ in 0..(next.0 - curr.0) {
+                sequence.push('v');
+            }
+        }
+
+        if next.1 > curr.1 {
+            for _ in 0..(next.1 - curr.1) {
+                sequence.push('>');
+            }
+        }
+
+        if next.0 <= curr.0 {
+            for _ in 0..(curr.0 - next.0) {
+                sequence.push('^');
+            }
+        }
+
+        if next.1 <= curr.1 {
+            for _ in 0..(curr.1 - next.1) {
+                sequence.push('<');
+            }
+        }
+        sequence.push('A');
+        res.push(sequence);
+
+        curr = next;
+    }
+
+    let result = res
+        .into_iter()
+        .map(|it| expand_a(&it, iter - 1, memo))
+        .sum();
+    memo.insert((source.to_string(), iter), result);
+    result
+}
 
 fn directional_on_directional_cnt(
     came_from: char,
@@ -171,47 +240,26 @@ fn robot_code(code: &str) -> usize {
 
     let n34 = n3
         .iter()
-        .flat_map(|n3| {
-            n4.iter().map(move |n4| {
-                let mut s = n3.clone();
-                s.push_str(n4);
-                s
-            })
-        })
+        .flat_map(|n3| n4.iter().map(move |n4| [n3, n4]))
         .collect::<Vec<_>>();
 
     let n234 = n2
         .iter()
-        .flat_map(|n2| {
-            n34.iter().map(move |n34| {
-                let mut s = n2.clone();
-                s.push_str(n34);
-                s
-            })
-        })
+        .flat_map(|n2| n34.iter().map(move |n34| [n2, n34[0], n34[1]]))
         .collect::<Vec<_>>();
 
     let all_combinations = n1
         .iter()
-        .flat_map(|n1| {
-            n234.iter().map(move |n234| {
-                let mut s = n1.clone();
-                s.push_str(n234);
-                s
-            })
-        })
+        .flat_map(|n1| n234.iter().map(move |n234| [n1, n234[0], n234[1], n234[2]]))
         .collect::<Vec<_>>();
 
-    let mut memo: HashMap<(char, char, usize), usize> = HashMap::new();
+    let mut memo: HashMap<(String, usize), usize> = HashMap::new();
 
     let computed = all_combinations
         .into_iter()
         .map(|it| {
-            ("A".to_string() + &it)
-                .chars()
-                .collect::<Vec<_>>()
-                .windows(2)
-                .map(|win| directional_on_directional_cnt(win[0], win[1], ITER, &mut memo))
+            it.into_iter()
+                .map(|it| expand_a(it, ITER, &mut memo))
                 .sum::<usize>()
         })
         .collect::<Vec<_>>();
