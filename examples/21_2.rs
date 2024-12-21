@@ -2,52 +2,7 @@ use std::collections::{HashMap, LinkedList};
 
 const INPUT: &str = include_str!("../input.txt");
 
-fn directional_on_directional(input: &str) -> String {
-    let get_coords = |char: char| match char {
-        'A' => (0, 2),
-        '^' => (0, 1),
-        '<' => (1, 0),
-        'v' => (1, 1),
-        '>' => (1, 2),
-        _ => unreachable!(),
-    };
-
-    let mut curr = get_coords('A');
-    let mut sequence = String::new();
-    for input_char in input.chars() {
-        let next = get_coords(input_char);
-
-        if next.0 > curr.0 {
-            for _ in 0..(next.0 - curr.0) {
-                sequence.push('v');
-            }
-        }
-
-        if next.1 > curr.1 {
-            for _ in 0..(next.1 - curr.1) {
-                sequence.push('>');
-            }
-        }
-
-        if next.0 <= curr.0 {
-            for _ in 0..(curr.0 - next.0) {
-                sequence.push('^');
-            }
-        }
-
-        if next.1 <= curr.1 {
-            for _ in 0..(curr.1 - next.1) {
-                sequence.push('<');
-            }
-        }
-        sequence.push('A');
-
-        curr = next;
-    }
-
-    // memo.insert(input.to_string(), sequence.clone());
-    sequence
-}
+const ITER: usize = 2;
 
 fn directional_on_directional_cnt(
     came_from: char,
@@ -60,6 +15,7 @@ fn directional_on_directional_cnt(
     }
 
     if iter == 0 {
+        memo.insert((came_from, char, iter), 1);
         return 1;
     }
 
@@ -77,11 +33,6 @@ fn directional_on_directional_cnt(
     sequence.push(char);
 
     let next = get_coords(char);
-    if next.0 > curr.0 {
-        for _ in 0..(next.0 - curr.0) {
-            sequence.push('v');
-        }
-    }
 
     if next.1 > curr.1 {
         for _ in 0..(next.1 - curr.1) {
@@ -89,15 +40,21 @@ fn directional_on_directional_cnt(
         }
     }
 
-    if next.0 <= curr.0 {
-        for _ in 0..(curr.0 - next.0) {
-            sequence.push('^');
+    if next.0 > curr.0 {
+        for _ in 0..(next.0 - curr.0) {
+            sequence.push('v');
         }
     }
 
     if next.1 <= curr.1 {
         for _ in 0..(curr.1 - next.1) {
             sequence.push('<');
+        }
+    }
+
+    if next.0 <= curr.0 {
+        for _ in 0..(curr.0 - next.0) {
+            sequence.push('^');
         }
     }
     sequence.push('A');
@@ -128,9 +85,9 @@ fn robot_code(code: &str) -> usize {
         (3, 2),
     ];
 
-    let mut result = 0;
     let mut curr = COORDS[10];
 
+    let mut all_all_paths = Vec::new();
     for c in code.chars() {
         let next = match c {
             'A' => COORDS[10],
@@ -203,30 +160,65 @@ fn robot_code(code: &str) -> usize {
             paths
         };
 
-        let mut memo = HashMap::new();
-
-        let computed = all_paths
-            .into_iter()
-            .map(|it| {
-                ("A".to_string() + &it)
-                    .chars()
-                    .collect::<Vec<_>>()
-                    .windows(2)
-                    .map(|win| directional_on_directional_cnt(win[0], win[1], 2, &mut memo))
-                    .sum::<usize>()
-            })
-            .collect::<Vec<_>>();
-
-        dbg!(&computed);
-
-        result += computed.into_iter().min().unwrap();
+        all_all_paths.push(all_paths);
 
         curr = next
     }
 
-    // dbg!(&a);
+    let [n1, n2, n3, n4] = &all_all_paths[..] else {
+        unreachable!()
+    };
 
-    result
+    let n34 = n3
+        .iter()
+        .flat_map(|n3| {
+            n4.iter().map(move |n4| {
+                let mut s = n3.clone();
+                s.push_str(n4);
+                s
+            })
+        })
+        .collect::<Vec<_>>();
+
+    let n234 = n2
+        .iter()
+        .flat_map(|n2| {
+            n34.iter().map(move |n34| {
+                let mut s = n2.clone();
+                s.push_str(n34);
+                s
+            })
+        })
+        .collect::<Vec<_>>();
+
+    let all_combinations = n1
+        .iter()
+        .flat_map(|n1| {
+            n234.iter().map(move |n234| {
+                let mut s = n1.clone();
+                s.push_str(n234);
+                s
+            })
+        })
+        .collect::<Vec<_>>();
+
+    let mut memo: HashMap<(char, char, usize), usize> = HashMap::new();
+
+    let computed = all_combinations
+        .into_iter()
+        .map(|it| {
+            ("A".to_string() + &it)
+                .chars()
+                .collect::<Vec<_>>()
+                .windows(2)
+                .map(|win| directional_on_directional_cnt(win[0], win[1], ITER, &mut memo))
+                .sum::<usize>()
+        })
+        .collect::<Vec<_>>();
+
+    // dbg!(&computed);
+
+    *computed.iter().min().unwrap()
 }
 
 fn main() {
