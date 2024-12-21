@@ -140,7 +140,15 @@ fn robot_code(code: &str) -> String {
 
         let computed = all_paths
             .into_iter()
-            .map(|it| directional_on_directional(&directional_on_directional(&it)))
+            .map(|it| {
+                let mut res = it;
+
+                for _ in 0..2 {
+                    res = directional_on_directional(&res)
+                }
+
+                res
+            })
             .min_by_key(|a| a.len())
             .unwrap();
 
