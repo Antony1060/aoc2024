@@ -73,72 +73,6 @@ fn expand_a(source: &str, iter: usize, memo: &mut HashMap<(String, usize), usize
     result
 }
 
-fn directional_on_directional_cnt(
-    came_from: char,
-    char: char,
-    iter: usize,
-    memo: &mut HashMap<(char, char, usize), usize>,
-) -> usize {
-    if let Some(val) = memo.get(&(came_from, char, iter)) {
-        return *val;
-    }
-
-    if iter == 0 {
-        memo.insert((came_from, char, iter), 1);
-        return 1;
-    }
-
-    let get_coords = |char: char| match char {
-        'A' => (0, 2),
-        '^' => (0, 1),
-        '<' => (1, 0),
-        'v' => (1, 1),
-        '>' => (1, 2),
-        _ => unreachable!(),
-    };
-
-    let curr = get_coords(came_from);
-    let mut sequence = String::new();
-    sequence.push(char);
-
-    let next = get_coords(char);
-
-    if next.1 > curr.1 {
-        for _ in 0..(next.1 - curr.1) {
-            sequence.push('>');
-        }
-    }
-
-    if next.0 > curr.0 {
-        for _ in 0..(next.0 - curr.0) {
-            sequence.push('v');
-        }
-    }
-
-    if next.1 <= curr.1 {
-        for _ in 0..(curr.1 - next.1) {
-            sequence.push('<');
-        }
-    }
-
-    if next.0 <= curr.0 {
-        for _ in 0..(curr.0 - next.0) {
-            sequence.push('^');
-        }
-    }
-    sequence.push('A');
-
-    let result = sequence
-        .chars()
-        .collect::<Vec<_>>()
-        .windows(2)
-        .map(|win| directional_on_directional_cnt(win[0], win[1], iter - 1, memo))
-        .sum();
-
-    memo.insert((came_from, char, iter), result);
-    result
-}
-
 fn robot_code(code: &str) -> usize {
     const COORDS: [(u64, u64); 11] = [
         (3, 1),
@@ -156,7 +90,10 @@ fn robot_code(code: &str) -> usize {
 
     let mut curr = COORDS[10];
 
-    let mut all_all_paths = Vec::new();
+    let mut result = 0;
+
+    let mut memo: HashMap<(String, usize), usize> = HashMap::new();
+
     for c in code.chars() {
         let next = match c {
             'A' => COORDS[10],
@@ -229,44 +166,18 @@ fn robot_code(code: &str) -> usize {
             paths
         };
 
-        all_all_paths.push(all_paths);
+        let computed = all_paths
+            .into_iter()
+            .map(|it| expand_a(&it, ITER, &mut memo))
+            .min()
+            .unwrap();
+
+        result += computed;
 
         curr = next
     }
 
-    let [n1, n2, n3, n4] = &all_all_paths[..] else {
-        unreachable!()
-    };
-
-    let n34 = n3
-        .iter()
-        .flat_map(|n3| n4.iter().map(move |n4| [n3, n4]))
-        .collect::<Vec<_>>();
-
-    let n234 = n2
-        .iter()
-        .flat_map(|n2| n34.iter().map(move |n34| [n2, n34[0], n34[1]]))
-        .collect::<Vec<_>>();
-
-    let all_combinations = n1
-        .iter()
-        .flat_map(|n1| n234.iter().map(move |n234| [n1, n234[0], n234[1], n234[2]]))
-        .collect::<Vec<_>>();
-
-    let mut memo: HashMap<(String, usize), usize> = HashMap::new();
-
-    let computed = all_combinations
-        .into_iter()
-        .map(|it| {
-            it.into_iter()
-                .map(|it| expand_a(it, ITER, &mut memo))
-                .sum::<usize>()
-        })
-        .collect::<Vec<_>>();
-
-    // dbg!(&computed);
-
-    *computed.iter().min().unwrap()
+    result
 }
 
 fn main() {
