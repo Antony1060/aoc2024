@@ -2,7 +2,7 @@ use std::collections::{HashMap, LinkedList};
 
 const INPUT: &str = include_str!("../input.txt");
 
-const ITER: usize = 2;
+const ITER: usize = 25;
 
 fn all_paths_bfs<N>(neighbours: N, start: (u64, u64), end: (u64, u64)) -> Vec<String>
 where
