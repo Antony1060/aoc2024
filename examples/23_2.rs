@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
 
 const INPUT: &str = include_str!("../input.txt");
 
