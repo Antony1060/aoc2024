@@ -21,6 +21,7 @@ fn make_ic(
             let mut locked_clone = locked.to_vec();
             locked_clone.push(it.clone());
             locked_clone.sort();
+
             let ic = make_ic(&locked_clone, &left[1..], connections);
             if ic.len() > res.len() {
                 res = ic;
@@ -54,39 +55,15 @@ fn main() {
         }
     }
 
-    let mut sets: HashSet<Vec<String>> = HashSet::new();
-    let mut largest = 0;
-
-    // dbg!(&connections);
-
-    let ics: Vec<Vec<String>> = connections
+    println!("computing...");
+    let ics: HashSet<Vec<String>> = connections
         .par_iter()
-        .map(|(key, values)| {
-            println!("doing: {key}");
-            let ic = make_ic(&[key.clone()], values, &connections);
-            println!("done: {key}");
-
-            ic
-        })
+        .map(|(key, values)| make_ic(&[key.clone()], values, &connections))
         .collect();
 
-    for ic in ics {
-        if ic.len() < largest {
-            continue;
-        }
+    println!("processing...");
 
-        largest = ic.len();
-
-        sets.insert(ic);
-
-        sets.retain(|it| it.len() == largest);
-        println!("sets: {:?}", sets);
-    }
-
-    // dbg!(&sets);
-
-    let mut largest = sets.iter().max_by_key(|it| it.len()).unwrap().clone();
-    largest.sort();
+    let largest = ics.iter().max_by_key(|it| it.len()).unwrap().clone();
 
     let result = largest.join(",");
 
