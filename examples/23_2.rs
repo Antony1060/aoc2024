@@ -3,6 +3,30 @@ use std::hash::Hash;
 
 const INPUT: &str = include_str!("../input.txt");
 
+fn make_ic(
+    locked: &[String],
+    left: &[String],
+    connections: &HashMap<String, Vec<String>>,
+) -> HashSet<Vec<String>> {
+    let mut sets = HashSet::new();
+    sets.insert(locked.to_vec());
+
+    for it in left {
+        let good = locked.iter().all(|locked| {
+            let values = connections.get(locked).unwrap();
+            values.contains(it)
+        });
+
+        if good {
+            let mut locked_clone = locked.to_vec();
+            locked_clone.push(it.clone());
+            sets.extend(make_ic(&locked_clone, &left[1..], connections));
+        }
+    }
+
+    sets
+}
+
 fn main() {
     let mut connections: HashMap<String, Vec<String>> = HashMap::new();
 
@@ -27,33 +51,38 @@ fn main() {
     }
 
     let mut sets: HashSet<Vec<String>> = HashSet::new();
+    let mut largest = 0;
 
-    dbg!(&connections);
+    // dbg!(&connections);
 
-    'out: for (key, values) in connections.iter() {
-        for i in values.iter() {
-            for j in values.iter() {
-                if i == j {
-                    continue;
-                }
+    for (key, values) in connections.iter() {
+        println!("doing: {key}");
+        let ic = make_ic(&[key.clone()], values, &connections);
 
-                let j_values = connections.get(j).unwrap();
+        let ic = ic
+            .into_iter()
+            .filter(|it| it.len() >= largest)
+            .collect::<Vec<_>>();
 
-                if !j_values.contains(i) {
-                    continue 'out;
-                }
-            }
+        if ic.is_empty() {
+            continue;
         }
 
-        let mut set = vec![key.to_string()];
-        set.extend(values.iter().cloned());
-        set.sort();
-        sets.insert(set);
+        let ic_largest = ic.iter().max_by_key(|it| it.len()).unwrap().len();
+
+        if ic_largest > largest {
+            largest = ic_largest;
+            sets.extend(ic);
+        }
+
+        sets.retain(|it| it.len() == largest);
+        println!("sets: {:?}", sets);
     }
 
-    dbg!(&sets);
+    // dbg!(&sets);
 
-    let largest = sets.iter().max_by_key(|it| it.len()).unwrap();
+    let mut largest = sets.iter().max_by_key(|it| it.len()).unwrap().clone();
+    largest.sort();
 
     let result = largest.join(",");
 
