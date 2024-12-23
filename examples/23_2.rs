@@ -1,3 +1,5 @@
+use rayon::iter::IntoParallelRefIterator;
+use rayon::iter::ParallelIterator;
 use std::collections::{HashMap, HashSet};
 
 const INPUT: &str = include_str!("../input.txt");
@@ -6,9 +8,8 @@ fn make_ic(
     locked: &[String],
     left: &[String],
     connections: &HashMap<String, Vec<String>>,
-) -> HashSet<Vec<String>> {
-    let mut sets = HashSet::new();
-    sets.insert(locked.to_vec());
+) -> Vec<String> {
+    let mut res = locked.to_vec();
 
     for it in left {
         let good = locked.iter().all(|locked| {
@@ -19,11 +20,15 @@ fn make_ic(
         if good {
             let mut locked_clone = locked.to_vec();
             locked_clone.push(it.clone());
-            sets.extend(make_ic(&locked_clone, &left[1..], connections));
+            locked_clone.sort();
+            let ic = make_ic(&locked_clone, &left[1..], connections);
+            if ic.len() > res.len() {
+                res = ic;
+            }
         }
     }
 
-    sets
+    res
 }
 
 fn main() {
@@ -54,25 +59,25 @@ fn main() {
 
     // dbg!(&connections);
 
-    for (key, values) in connections.iter() {
-        println!("doing: {key}");
-        let ic = make_ic(&[key.clone()], values, &connections);
+    let ics: Vec<Vec<String>> = connections
+        .par_iter()
+        .map(|(key, values)| {
+            println!("doing: {key}");
+            let ic = make_ic(&[key.clone()], values, &connections);
+            println!("done: {key}");
 
-        let ic = ic
-            .into_iter()
-            .filter(|it| it.len() >= largest)
-            .collect::<Vec<_>>();
+            ic
+        })
+        .collect();
 
-        if ic.is_empty() {
+    for ic in ics {
+        if ic.len() < largest {
             continue;
         }
 
-        let ic_largest = ic.iter().max_by_key(|it| it.len()).unwrap().len();
+        largest = ic.len();
 
-        if ic_largest > largest {
-            largest = ic_largest;
-            sets.extend(ic);
-        }
+        sets.insert(ic);
 
         sets.retain(|it| it.len() == largest);
         println!("sets: {:?}", sets);
