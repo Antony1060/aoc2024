@@ -121,7 +121,6 @@ fn robot_code(code: &str) -> String {
                     continue;
                 }
 
-                // println!("neighbours {c}: {:?}", neighbours(node));
                 for neighbour in neighbours(node) {
                     if path.contains(&neighbour) {
                         continue;
