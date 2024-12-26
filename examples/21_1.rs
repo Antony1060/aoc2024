@@ -72,7 +72,6 @@ fn robot_code(code: &str) -> String {
             _ => COORDS[(c as u8 - b'0') as usize],
         };
 
-        // yes, this is a bfs, stfu
         let all_paths = {
             let neighbours = |digit: &(u64, u64)| match *digit {
                 it if it == COORDS[10] => vec![COORDS[0], COORDS[3]],
