@@ -65,13 +65,6 @@ fn main() {
 
         visited.extend(region.iter());
 
-        // println!(
-        //     "region {}: {}",
-        //     matrix[region.iter().next().unwrap() / m_width]
-        //         [region.iter().next().unwrap() % m_width],
-        //     region.len()
-        // );
-
         let area = region.len();
         let perimeter_nodes: HashSet<(usize, u8)> = region
             .iter()
